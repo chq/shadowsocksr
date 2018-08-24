@@ -35,8 +35,9 @@ class MuJsonLoader(object):
 
 
 class MuMgr(object):
-	def __init__(self):
+	def __init__(self, isJson=False):
 		self.config_path = get_config().MUDB_FILE
+		self.isJson = isJson
 		try:
 			self.server_addr = get_config().SERVER_PUB_ADDR
 		except:
@@ -194,9 +195,16 @@ class MuMgr(object):
 	def list_user(self, user):
 		self.data.load(self.config_path)
 		if not user:
+			if self.isJson:
+				print(self.data.json)
+				return
+
 			for row in self.data.json:
 				print("user [%s] port %s" % (row['user'], row['port']))
 			return
+
+		userList=[]
+
 		for row in self.data.json:
 			match = True
 			if 'user' in user and row['user'] != user['user']:
@@ -207,7 +215,12 @@ class MuMgr(object):
 				muid = None
 				if 'muid' in user:
 					muid = user['muid']
-				print("### user [%s] info %s" % (row['user'], self.userinfo(row, muid)))
+				if self.isJson:
+					userList.append(row)
+				else:
+					print("### user [%s] info %s" % (row['user'], self.userinfo(row, muid)))
+		if self.isJson:
+			print(userList)
 
 
 def print_server_help():
@@ -234,6 +247,7 @@ Options:
   -i MUID              set sub id to display (only work with -l)
   -s SPEED             set speed_limit_per_con
   -S SPEED             set speed_limit_per_user
+  -j                   output data in JSON format
 
 General options:
   -h, --help           show this help message and exit
@@ -241,10 +255,11 @@ General options:
 
 
 def main():
-	shortopts = 'adeclu:i:p:k:O:o:G:g:m:t:f:hs:S:'
+	shortopts = 'adeclu:i:p:k:O:o:G:g:m:t:f:hs:S:j'
 	longopts = ['help']
 	action = None
 	user = {}
+	isJson = False
 	fast_set_obfs = {'0': 'plain',
 			'+1': 'http_simple_compatible',
 			'1': 'http_simple',
@@ -282,6 +297,8 @@ def main():
 				action = 4
 			elif key == '-c':
 				action = 0
+			elif key == '-j':
+				isJson = True
 			elif key == '-u':
 				user['user'] = value
 			elif key == '-i':
@@ -329,7 +346,7 @@ def main():
 		print(e)
 		sys.exit(2)
 
-	manage = MuMgr()
+	manage = MuMgr(isJson)
 	if action == 0:
 		manage.clear_ud(user)
 	elif action == 1:
