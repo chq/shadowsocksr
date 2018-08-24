@@ -196,7 +196,7 @@ class MuMgr(object):
 		self.data.load(self.config_path)
 		if not user:
 			if self.isJson:
-				print(self.data.json)
+				print(json.dumps(self.data.json, ensure_ascii=False))
 				return
 
 			for row in self.data.json:
@@ -220,7 +220,7 @@ class MuMgr(object):
 				else:
 					print("### user [%s] info %s" % (row['user'], self.userinfo(row, muid)))
 		if self.isJson:
-			print(userList)
+			print(json.dumps(userList, ensure_ascii=False))
 
 
 def print_server_help():
