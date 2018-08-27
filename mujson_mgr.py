@@ -35,9 +35,10 @@ class MuJsonLoader(object):
 
 
 class MuMgr(object):
-	def __init__(self, isJson=False):
+	def __init__(self, isJson=False, isByte=False):
 		self.config_path = get_config().MUDB_FILE
 		self.isJson = isJson
+		self.isByte = isByte
 		try:
 			self.server_addr = get_config().SERVER_PUB_ADDR
 		except:
@@ -144,17 +145,18 @@ class MuMgr(object):
 				print("user [%s] port [%s] already exist" % (row['user'], row['port']))
 				return
 		self.data.json.append(up)
-		print("### add user info %s" % self.userinfo(up))
+		if self.isJson:
+			print(json.dumps(up, ensure_ascii=False))
+		else:
+			print("### add user info %s" % self.userinfo(up))
 		self.data.save(self.config_path)
 
 	def edit(self, user):
 		self.data.load(self.config_path)
 		for row in self.data.json:
-			match = True
-			if 'user' in user and row['user'] != user['user']:
-				match = False
-			if 'port' in user and row['port'] != user['port']:
-				match = False
+			match = False
+			if ('port' in user and row['port'] == user['port']):
+				match = True
 			if match:
 				print("edit user [%s]" % (row['user'],))
 				row.update(user)
@@ -206,11 +208,12 @@ class MuMgr(object):
 		userList=[]
 
 		for row in self.data.json:
-			match = True
-			if 'user' in user and row['user'] != user['user']:
-				match = False
-			if 'port' in user and row['port'] != user['port']:
-				match = False
+			match = False
+			if ('user' in user and row['user'] == user['user'] and 'port' in user and row['port'] == user['port']) or \
+				('user' in user and row['user'] == user['user'] and 'port' not in user) or \
+				('port' in user and row['port'] == user['port'] and 'user' not in user):
+				match = True
+
 			if match:
 				muid = None
 				if 'muid' in user:
@@ -248,6 +251,7 @@ Options:
   -s SPEED             set speed_limit_per_con
   -S SPEED             set speed_limit_per_user
   -j                   output data in JSON format
+  -B                   unit Byte is in use for max transfer
 
 General options:
   -h, --help           show this help message and exit
@@ -255,11 +259,12 @@ General options:
 
 
 def main():
-	shortopts = 'adeclu:i:p:k:O:o:G:g:m:t:f:hs:S:j'
+	shortopts = 'adeclu:i:p:k:O:o:G:g:m:t:f:hs:S:jB'
 	longopts = ['help']
 	action = None
 	user = {}
 	isJson = False
+	isByte = False # GB if True
 	fast_set_obfs = {'0': 'plain',
 			'+1': 'http_simple_compatible',
 			'1': 'http_simple',
@@ -299,6 +304,8 @@ def main():
 				action = 0
 			elif key == '-j':
 				isJson = True
+			elif key == '-B':
+				isByte = True
 			elif key == '-u':
 				user['user'] = value
 			elif key == '-i':
@@ -338,7 +345,8 @@ def main():
 					val = int(value)
 				except:
 					pass
-				user['transfer_enable'] = int(val * 1024) * (1024 ** 2)
+
+				user['transfer_enable'] = val
 			elif key in ('-h', '--help'):
 				print_server_help()
 				sys.exit(0)
@@ -346,7 +354,13 @@ def main():
 		print(e)
 		sys.exit(2)
 
-	manage = MuMgr(isJson)
+	if 'transfer_enable' in user:
+		if isByte:
+			user['transfer_enable'] = int(user['transfer_enable'])
+		else:
+			user['transfer_enable'] = int(user['transfer_enable'] * (1024 ** 3))
+
+	manage = MuMgr(isJson, isByte)
 	if action == 0:
 		manage.clear_ud(user)
 	elif action == 1:
